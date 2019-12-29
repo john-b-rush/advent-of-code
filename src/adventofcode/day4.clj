@@ -1,10 +1,9 @@
 (ns adventofcode.day4)
 
+;; I've lost work here. This isn't the compelete solution
 
 (def min-value 172851)
 (def max-value 675869)
-
-
 
 
 (defn- old-matches?
@@ -24,6 +23,7 @@
         :else
         false))))
 
+
 (defn matching-passwords
   [value]
   (loop [value value
@@ -38,17 +38,18 @@
 (defn- ->digit-groups
   [value]
   (partition-by identity
-  (for [n  (str value)]
-       (- (byte n) 48))))
+                (for [n  (str value)]
+                  (- (byte n) 48))))
 
 ;; SO
-(defn partition-between [pred? coll] 
-  (let [switch (reductions not= true (map pred? coll (rest coll)))] 
+(defn partition-between
+  [pred? coll]
+  (let [switch (reductions not= true (map pred? coll (rest coll)))]
     (map (partial map first) (partition-by second (map list coll switch)))))
 
 
 ;; TODO Fix 
-(defn- increasing? 
+(defn- increasing?
   [digit-groups]
   (->> digit-groups
        (partition-between (fn [a b] (<= (first a)  (first b))))
@@ -62,8 +63,8 @@
 (defn- pairs?
   [digit-groups]
   (->> digit-groups
-    (map count)
-  true)
+       (map count)
+       true))
   ;(->> digit-groups
        ;(map count)
        ;(some #(> 2 %))))
@@ -78,16 +79,16 @@
 (defn- ignore-multiple-matches
   [digit-groups]
   (->> digit-groups
-    (map count)
-    (some #(= % 2))))
+       (map count)
+       (some #(= % 2))))
 
 
 (defn matches2?
   [value]
   (let [digit-groupings (->digit-groups value)]
     (and (increasing? digit-groupings)
-         (pairs? digit-groupings)
-         (no-triples? digit-groupings))))
+         (pairs? digit-groupings))))
+         ;(no-triples? digit-groupings))))
 
 
 (defn find-passwords
@@ -96,4 +97,4 @@
        (map match-fn)
        (filter identity)
        (count)))
-       
+

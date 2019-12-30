@@ -9,12 +9,14 @@
       (rem mode 10)
       (recur (dec offset) (quot mode 10)))))
 
+
 (defn read-param
   "Reads the value of a parameter"
   [input index offset]
   (if (= (mode (nth input index) offset) 0)
     (nth input (nth input (+ index offset)))
     (nth input (+ index offset))))
+
 
 (defn dispatch-opcodes
   "Process opcodes"
@@ -68,6 +70,40 @@
   (read-param instructions inst-idx 1))
 
 
+(defn jump-if-true
+  "if the first parameter is non-zero, it sets the instruction pointer to the value from the second parameter. "
+  [instructions inst-idx]
+  (if (zero? (read-param instructions inst-idx 1))
+    (+ inst-idx 3)
+    (read-param instructions inst-idx 2)))
+
+
+(defn jump-if-false
+  "if the first parameter is zero, it sets the instruction pointer to the value from the second parameter. "
+  [instructions inst-idx]
+  (if (zero? (read-param instructions inst-idx 1))
+    (read-param instructions inst-idx 2)
+    (+ inst-idx 3)))
+
+
+(defn less-than
+  [instructions inst-idx]
+  (assoc instructions
+         (nth instructions (+ inst-idx 3))
+         (if (< (read-param instructions inst-idx 1) (read-param instructions inst-idx 2))
+           1
+           0)))
+
+
+(defn equal
+  [instructions inst-idx]
+  (assoc instructions
+         (nth instructions (+ inst-idx 3))
+         (if (= (read-param instructions inst-idx 1) (read-param instructions inst-idx 2))
+           1
+           0)))
+
+
 (defn run-program
   "Run the intcode program"
   ([program]
@@ -88,4 +124,9 @@
            (= opcode 1) (recur (add program inst-idx) (+ inst-idx 4) output)
            (= opcode 2) (recur (multiply program inst-idx) (+ inst-idx 4) output)
            (= opcode 3) (recur (save-input program inst-idx input) (+ inst-idx 2) output)
-           (= opcode 4) (recur program (+ inst-idx 2) (conj output (read-output program inst-idx)))))))))
+           (= opcode 4) (recur program (+ inst-idx 2) (conj output (read-output program inst-idx)))
+           (= opcode 5) (recur program (jump-if-true program inst-idx) output)
+           (= opcode 6) (recur program (jump-if-false program inst-idx) output)
+           (= opcode 7) (recur (less-than program inst-idx) (+ inst-idx 4) output)
+           (= opcode 8) (recur (equal program inst-idx) (+ inst-idx 4) output)))))))
+

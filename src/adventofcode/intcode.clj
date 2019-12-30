@@ -26,3 +26,58 @@
                    (read-param input index 2)))
            (+ index 4)))))))
 
+
+(defn add
+  "adds"
+  [instructions inst-idx]
+  (assoc instructions
+         (nth instructions (+ inst-idx 3))
+         (+ (read-param instructions inst-idx 1)
+            (read-param instructions inst-idx 2))))
+
+
+(defn multiply
+  "multiplies"
+  [instructions inst-idx]
+  (assoc instructions
+         (nth instructions (+ inst-idx 3))
+         (* (read-param instructions inst-idx 1)
+            (read-param instructions inst-idx 2))))
+
+
+(defn save-input
+  "takes input"
+  [instructions inst-idx inputs]
+  (assoc instructions
+         (nth instructions (+ inst-idx 1))
+         inputs))
+
+
+(defn read-output
+  "returns output"
+  [instructions inst-idx]
+  (read-param instructions inst-idx 1))
+
+
+(defn run-program
+  "Run the intcode program"
+  ([program]
+   (run-program program nil 0 false))
+  ([program input]
+   (run-program program input 0 false))
+  ([program input inst-idx return-program?]
+   (loop [program program
+          inst-idx inst-idx
+          output []]
+     (let [inst (nth program inst-idx)
+           opcode (rem inst 100)]
+       (if (= opcode 99)
+         (if return-program?
+           program
+           output)
+         (cond
+           (= opcode 1) (recur (add program inst-idx) (+ inst-idx 4) output)
+           (= opcode 2) (recur (multiply program inst-idx) (+ inst-idx 4) output)
+           (= opcode 3) (recur (save-input program inst-idx input) (+ inst-idx 2) output)
+           (= opcode 4) (recur program (+ inst-idx 2) (conj output (read-output program inst-idx)))))))))
+

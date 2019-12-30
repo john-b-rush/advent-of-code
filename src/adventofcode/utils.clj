@@ -42,6 +42,13 @@
   [string]
   (str/split string (re-pattern "\\)")))
 
+(defn day5-input
+  []
+  (->> "input/day5.txt"
+       (read-input)
+       (csv->seq)
+       (vec)))
+
 (defn day6-input
   []
  (->> "input/day6_input.txt"

@@ -1,11 +1,20 @@
 (ns adventofcode.intcode)
 
 
+(defn mode
+  [instruction offset]
+  (loop [offset (dec offset)
+         mode (quot instruction 100)]
+    (if (= offset 0)
+      (rem mode 10)
+      (recur (dec offset) (quot mode 10)))))
+
 (defn read-param
   "Reads the value of a parameter"
   [input index offset]
-  (nth input (nth input (+ index offset))))
-
+  (if (= (mode (nth input index) offset) 0)
+    (nth input (nth input (+ index offset)))
+    (nth input (+ index offset))))
 
 (defn dispatch-opcodes
   "Process opcodes"
@@ -80,4 +89,3 @@
            (= opcode 2) (recur (multiply program inst-idx) (+ inst-idx 4) output)
            (= opcode 3) (recur (save-input program inst-idx input) (+ inst-idx 2) output)
            (= opcode 4) (recur program (+ inst-idx 2) (conj output (read-output program inst-idx)))))))))
-

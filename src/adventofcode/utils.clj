@@ -5,6 +5,10 @@
   [string]
   (str/split string #","))
 
+(defn- split-chars
+  [string]
+  (str/split string #""))
+
 (defn- csv->seq
   [string]
   (map read-string (split-string string)))
@@ -55,3 +59,19 @@
       (read-input)
       (str/split-lines)
       (map split-orbit)))
+
+(defn day7-input
+  []
+  (->> "input/day7.txt"
+       (read-input)
+       (csv->seq)
+       (vec)))
+
+(defn day8-input
+  []
+  (->> "input/day8.txt"
+       (slurp)
+       (str/trim-newline)
+       (split-chars)
+       (map read-string)))
+

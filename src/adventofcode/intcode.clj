@@ -117,6 +117,7 @@
           inputs inputs]
      (let [inst (nth program inst-idx)
            opcode (rem inst 100)]
+       (prn opcode (take 3 inputs) output)
        (if (= opcode 99)
          (if return-program?
            program

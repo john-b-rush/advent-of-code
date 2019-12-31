@@ -108,12 +108,13 @@
   "Run the intcode program"
   ([program]
    (run-program program nil 0 false))
-  ([program input]
-   (run-program program input 0 false))
-  ([program input inst-idx return-program?]
+  ([program inputs]
+   (run-program program inputs 0 false))
+  ([program inputs inst-idx return-program?]
    (loop [program program
           inst-idx inst-idx
-          output []]
+          output []
+          inputs inputs]
      (let [inst (nth program inst-idx)
            opcode (rem inst 100)]
        (if (= opcode 99)
@@ -121,12 +122,12 @@
            program
            output)
          (cond
-           (= opcode 1) (recur (add program inst-idx) (+ inst-idx 4) output)
-           (= opcode 2) (recur (multiply program inst-idx) (+ inst-idx 4) output)
-           (= opcode 3) (recur (save-input program inst-idx input) (+ inst-idx 2) output)
-           (= opcode 4) (recur program (+ inst-idx 2) (conj output (read-output program inst-idx)))
-           (= opcode 5) (recur program (jump-if-true program inst-idx) output)
-           (= opcode 6) (recur program (jump-if-false program inst-idx) output)
-           (= opcode 7) (recur (less-than program inst-idx) (+ inst-idx 4) output)
-           (= opcode 8) (recur (equal program inst-idx) (+ inst-idx 4) output)))))))
+           (= opcode 1) (recur (add program inst-idx) (+ inst-idx 4) output inputs)
+           (= opcode 2) (recur (multiply program inst-idx) (+ inst-idx 4) output inputs)
+           (= opcode 3) (recur (save-input program inst-idx (first inputs)) (+ inst-idx 2) output (rest inputs))
+           (= opcode 4) (recur program (+ inst-idx 2) (conj output (read-output program inst-idx)) inputs)
+           (= opcode 5) (recur program (jump-if-true program inst-idx) output inputs)
+           (= opcode 6) (recur program (jump-if-false program inst-idx) output inputs)
+           (= opcode 7) (recur (less-than program inst-idx) (+ inst-idx 4) output inputs)
+           (= opcode 8) (recur (equal program inst-idx) (+ inst-idx 4) output inputs)))))))
 

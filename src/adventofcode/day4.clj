@@ -98,3 +98,32 @@
        (filter identity)
        (count)))
 
+
+;; Funtional approach
+
+(def input 
+ (->> (range 172851 (inc 675869)) 
+      (map str))) 
+
+
+(defn password?
+  [password]
+  (and (some (partial apply =) (partition 2 1 password))
+       (apply <= (map int password))))
+
+(defn part1-fn
+  []
+  (->> input
+       (filter password?)
+       (count)))
+
+(defn pw-no-repeat?
+  [password]
+  (and (password? password)
+       (some #(= % 2) (vals (frequencies password)))))
+
+(defn part2-fn
+  []
+  (->> input
+       (filter pw-no-repeat?)
+       (count)))

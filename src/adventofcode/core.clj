@@ -6,6 +6,8 @@
             [adventofcode.day6 :as day6]
             [adventofcode.day7 :as day7]
             [adventofcode.day8 :as day8]
+            [adventofcode.day12 :as day12]
+            [adventofcode.day14 :as day14]
             ))
 
 

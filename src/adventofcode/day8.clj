@@ -1,5 +1,6 @@
 (ns adventofcode.day8
   (:require
+    [clojure.string :as str]
     [adventofcode.utils :as utils]))
 
 ; TODO: refactor this

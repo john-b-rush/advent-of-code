@@ -11,8 +11,7 @@
   (-> mass
       (quot 3)
       (int)
-      (- 2)
-      (max 0)))
+      (- 2)))
 
 
 ;; TODO: Use loop/recur
@@ -24,7 +23,7 @@
   [mass]
   (let [fuel (fuel-needed mass)]
     (if (pos? fuel)
-      (+ fuel (totes-fuel-needed fuel))
+      (+ fuel (max 0 (totes-fuel-needed fuel)))
       fuel)))
 
 
@@ -39,4 +38,21 @@
   []
   (->> (utils/day1-input)
        (map totes-fuel-needed)
+       (reduce +)))
+
+;; What's interesting is the switch from an imperative 
+;; to a more functional iterate, then filter
+(defn functional-totes-fuel
+  [mass]
+  (->> mass
+       (iterate fuel-needed)
+       (drop 1)
+       (take-while pos?)
+       (reduce +)))
+
+;; more functional way 
+(defn part2-functional
+  []
+  (->> (utils/day1-input)
+       (map functional-totes-fuel)
        (reduce +)))

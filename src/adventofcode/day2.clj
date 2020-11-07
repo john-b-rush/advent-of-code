@@ -17,7 +17,7 @@
   []
   (->> (utils/day2-input)
        (prep-input)
-       (ic/dispatch-opcodes)
+       (ic/run-intcode)
        (first)))
 
 
@@ -26,7 +26,7 @@
   (let [noun (quot number 100)
         verb (rem number 100)]
     (= 19690720 (first
-                  (ic/dispatch-opcodes
+                  (ic/run-intcode
                     (prep-input (utils/day2-input) noun verb))))))
 
 

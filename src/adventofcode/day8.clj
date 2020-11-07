@@ -15,7 +15,6 @@
     bottom-color
     top-color))
 
-
 (defn resolve-layers
   [top-layer bottom-layer]
   (mapv resolve-colors top-layer bottom-layer))

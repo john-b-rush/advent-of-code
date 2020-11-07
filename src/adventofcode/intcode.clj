@@ -1,134 +1,198 @@
-(ns adventofcode.intcode)
+(ns adventofcode.intcode
+  (:require
+    [clojure.core.async
+     :as a
+     :refer [>! <! >!! <!! go chan buffer close! thread
+             go-loop
+             alts! alts!! timeout]]
+    [clojure.string :as str]))
 
 
-(defn mode
-  [instruction offset]
-  (loop [offset (dec offset)
-         mode (quot instruction 100)]
-    (if (= offset 0)
-      (rem mode 10)
-      (recur (dec offset) (quot mode 10)))))
+(defn pointer->params
+  [pointer program number-of-params write-last-param]
+  (->> (nth program pointer)
+       (format (case number-of-params
+                 3 "%05d"
+                 2 "%04d"
+                 1 "%03d"))
+       (seq)
+       (drop-last 2)
+       (map (comp read-string str))
+       (reverse)
+       (map-indexed
+         (fn [idx v]
+           (let [value-at-param (nth program (+ pointer 1 idx))]
+             (cond
+                ;; writes go to the location in this parameter  
+               (and write-last-param (= (- number-of-params 1) idx)) value-at-param
+
+               (= 1 v) value-at-param
+
+               :else (nth program value-at-param)))))))
 
 
-(defn read-param
-  "Reads the value of a parameter"
-  [input index offset]
-  (if (= (mode (nth input index) offset) 0)
-    (nth input (nth input (+ index offset)))
-    (nth input (+ index offset))))
+(defn pointer->3params
+  [pointer program write-last-param]
+  (pointer->params pointer program 3 write-last-param))
 
 
-(defn dispatch-opcodes
-  "Process opcodes"
-  ([input]
-   (dispatch-opcodes input 0))
-  ([input index]
-   (loop [input input
-          index index]
-     (let [opcode (nth input index)]
-       (if (= opcode 99)
-         input
-         (recur
-           (assoc input
-                  (nth input (+ index 3))
-                  ((cond (= opcode 1) +
-                         (= opcode 2) *)
-                   (read-param input index 1)
-                   (read-param input index 2)))
-           (+ index 4)))))))
+(defn pointer->2params
+  ([pointer program]
+   (pointer->params pointer program 2 true))
+  ([pointer program write-last-param]
+   (pointer->params pointer program 2 write-last-param)))
+
+
+(defn pointer->1params
+  [pointer program]
+  (pointer->params pointer program 1 false))
+
+
+(pointer->1params 0 [104 10])
+
+
+(defn add-multiply
+  [pointer program f]
+  (let [[first-param
+         second-param
+         third-param] (pointer->3params pointer program true)]
+    [(+ 4 pointer)
+     (assoc
+       program
+       third-param
+       (f first-param
+          second-param))]))
 
 
 (defn add
-  "adds"
-  [instructions inst-idx]
-  (assoc instructions
-         (nth instructions (+ inst-idx 3))
-         (+ (read-param instructions inst-idx 1)
-            (read-param instructions inst-idx 2))))
+  [pointer program]
+  (add-multiply pointer program +))
 
 
 (defn multiply
-  "multiplies"
-  [instructions inst-idx]
-  (assoc instructions
-         (nth instructions (+ inst-idx 3))
-         (* (read-param instructions inst-idx 1)
-            (read-param instructions inst-idx 2))))
+  [pointer program]
+  (add-multiply pointer program *))
 
 
-(defn save-input
-  "takes input"
-  [instructions inst-idx inputs]
-  (assoc instructions
-         (nth instructions (+ inst-idx 1))
-         inputs))
+(defn input
+  [pointer program in]
+  [(+ 2 pointer)
+   (assoc
+     program
+     (nth program (+ 1 pointer))
+     (<!! in))])
 
 
-(defn read-output
-  "returns output"
-  [instructions inst-idx]
-  (read-param instructions inst-idx 1))
+(defn output
+  [pointer program out]
+  (let [[first-param] (pointer->1params pointer program)]
+    (>!! out first-param)
+    [(+ 2 pointer)
+     program]))
+
+
+(defn jump-if-fn
+  [pointer program f]
+  (let [[first-param
+         second-param] (pointer->2params pointer program false)]
+    (if (f (not= 0 first-param))
+      [second-param program]
+      [(+ 3 pointer) program])))
 
 
 (defn jump-if-true
-  "if the first parameter is non-zero, it sets the instruction pointer to the value from the second parameter. "
-  [instructions inst-idx]
-  (if (zero? (read-param instructions inst-idx 1))
-    (+ inst-idx 3)
-    (read-param instructions inst-idx 2)))
+  [pointer program]
+  (jump-if-fn pointer program true?))
 
 
 (defn jump-if-false
-  "if the first parameter is zero, it sets the instruction pointer to the value from the second parameter. "
-  [instructions inst-idx]
-  (if (zero? (read-param instructions inst-idx 1))
-    (read-param instructions inst-idx 2)
-    (+ inst-idx 3)))
+  [pointer program]
+  (jump-if-fn pointer program false?))
+
+
+(defn compare-with-fn
+  [pointer program f]
+  (let [[first-param
+         second-param
+         third-param] (pointer->3params pointer program true)]
+    [(+ 4 pointer)
+     (assoc
+       program
+       third-param
+       (if (f first-param second-param)
+         1
+         0))]))
 
 
 (defn less-than
-  [instructions inst-idx]
-  (assoc instructions
-         (nth instructions (+ inst-idx 3))
-         (if (< (read-param instructions inst-idx 1) (read-param instructions inst-idx 2))
-           1
-           0)))
+  [pointer program]
+  (compare-with-fn pointer program <))
 
 
-(defn equal
-  [instructions inst-idx]
-  (assoc instructions
-         (nth instructions (+ inst-idx 3))
-         (if (= (read-param instructions inst-idx 1) (read-param instructions inst-idx 2))
-           1
-           0)))
+(defn equals
+  [pointer program]
+  (compare-with-fn pointer program =))
 
 
-(defn run-program
-  "Run the intcode program"
+(defn get-opscode
+  [opscode]
+  (as-> opscode n
+        (format "%05d" n)
+        (seq n)
+        (take-last 2 n)
+        (str/join "" n)
+        (str/replace n #"^0+" "")
+        (read-string n)))
+
+
+(defn intcode
+  ([in program]
+   (intcode in program false))
+  ([in program debug?]
+   (let [process (chan)
+         out (chan)]
+    ;; Initalize the processing
+     (go (>! process [0 program]))
+     (go-loop []
+       (let [[pointer program] (<! process)
+             ops-code (get-opscode (nth program pointer))]
+         (case ops-code
+           1  (go (>! process (add pointer program)))
+           2  (go (>! process (multiply pointer program)))
+           3  (go (>! process (input pointer program in)))
+           4  (go (>! process (output pointer program out)))
+           5  (go (>! process (jump-if-true pointer program)))
+           6  (go (>! process (jump-if-false pointer program)))
+           7  (go (>! process (less-than pointer program)))
+           8  (go (>! process (equals pointer program)))
+           99 (do
+                (when debug?
+                  (>!! out program))
+                (close! in)
+                (close! out))
+           (throw (ex-info "Invalid opcode" {:opscode ops-code})))
+         (recur)))
+     out)))
+
+
+(defn run-intcode
   ([program]
-   (run-program program nil 0 false))
+   (run-intcode program nil true))
   ([program inputs]
-   (run-program program inputs 0 false))
-  ([program inputs inst-idx return-program?]
-   (loop [program program
-          inst-idx inst-idx
-          output []
-          inputs inputs]
-     (let [inst (nth program inst-idx)
-           opcode (rem inst 100)]
-       (prn opcode (take 3 inputs) output)
-       (if (= opcode 99)
-         (if return-program?
-           program
-           output)
-         (cond
-           (= opcode 1) (recur (add program inst-idx) (+ inst-idx 4) output inputs)
-           (= opcode 2) (recur (multiply program inst-idx) (+ inst-idx 4) output inputs)
-           (= opcode 3) (recur (save-input program inst-idx (first inputs)) (+ inst-idx 2) output (rest inputs))
-           (= opcode 4) (recur program (+ inst-idx 2) (conj output (read-output program inst-idx)) inputs)
-           (= opcode 5) (recur program (jump-if-true program inst-idx) output inputs)
-           (= opcode 6) (recur program (jump-if-false program inst-idx) output inputs)
-           (= opcode 7) (recur (less-than program inst-idx) (+ inst-idx 4) output inputs)
-           (= opcode 8) (recur (equal program inst-idx) (+ inst-idx 4) output inputs)))))))
+   (run-intcode program inputs false))
+  ([program inputs debug?]
+   (let [in (chan)
+         out (intcode in program debug?)
+         outputs (a/into [] out)]
+     (when inputs
+       (a/onto-chan in inputs))
+     (<!! outputs))))
 
+
+(comment
+  (run-intcode [1 2 3 2 99])
+  (run-intcode [3 0 4 0 99] [11])
+  (run-intcode [1 1 1 4 99 5 6 0 99])
+  (run-intcode [3 9 8 9 10 9 4 9 99 -1 8] [8])
+  (run-intcode [3 21 1008 21 8 20 1005 20 22 107 8 21 20 1006 20 31 1106 0 36 98 0 0 1002 21 125 20 4 20 1105 1 46 104 999 1105 1 46 1101 1000 1 20 4 20 1105 1 46 98 99] [7])
+)

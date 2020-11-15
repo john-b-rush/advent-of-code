@@ -4,7 +4,7 @@
     [clojure.test :refer :all]))
 
 
-(deftest day2-tests
+#_(deftest day2-tests
   (testing "Part 1: answer"
     (is (= (part1) 4138687)))
   (testing "Part 2: answer"

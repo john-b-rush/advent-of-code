@@ -8,6 +8,7 @@
     [adventofcode.day6 :as day6]
     [adventofcode.day7 :as day7]
     [adventofcode.day8 :as day8]
+    [adventofcode.day9 :as day9]
     [adventofcode.intcode :as intcode]
     [adventofcode.utils :as utils]
     [clojure.core.async

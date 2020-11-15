@@ -8,141 +8,173 @@
     [clojure.string :as str]))
 
 
-(defn pointer->params
-  [pointer program number-of-params write-last-param]
-  (->> (nth program pointer)
-       (format (case number-of-params
-                 3 "%05d"
-                 2 "%04d"
-                 1 "%03d"))
-       (seq)
-       (drop-last 2)
-       (map (comp read-string str))
-       (reverse)
-       (map-indexed
-         (fn [idx v]
-           (let [value-at-param (nth program (+ pointer 1 idx))]
-             (cond
-                ;; writes go to the location in this parameter  
-               (and write-last-param (= (- number-of-params 1) idx)) value-at-param
-
-               (= 1 v) value-at-param
-
-               :else (nth program value-at-param)))))))
+(defn get-opscode
+  [{:keys [pointer program]}]
+  (try
+    (as-> (nth program pointer) n
+          (format "%05d" n)
+          (seq n)
+          (take-last 2 n)
+          (str/join "" n)
+          (str/replace n #"^0+" "")
+          (read-string n))
+    (catch Exception ex
+      (print "\n--\n" pointer program)
+      (throw ex))))
 
 
-(defn pointer->3params
-  [pointer program write-last-param]
-  (pointer->params pointer program 3 write-last-param))
+(defn assoc-expand-vec
+  [m k v]
+  (assoc
+    (if (< (count m) k)
+      (into m (repeat (- k (count m)) 0))
+      m)
+    k
+    v))
 
 
-(defn pointer->2params
-  ([pointer program]
-   (pointer->params pointer program 2 true))
-  ([pointer program write-last-param]
-   (pointer->params pointer program 2 write-last-param)))
+(defn get-mode
+  [opscode offest]
+  (let [value (->> opscode
+                   (format "%05d")
+                   (seq)
+                   (drop-last 2)
+                   (map (comp read-string str))
+                   (reverse))]
+    (nth value (- offest 1))))
 
 
-(defn pointer->1params
-  [pointer program]
-  (pointer->params pointer program 1 false))
+(defn parameter->value
+  [{:keys [pointer program relative-base] :as record} offset]
+  (let [mode (get-mode (nth program pointer) offset)
+        value-at-param (nth program (+ pointer offset))]
+    (cond
+      (= 2 mode)
+      (if (<= (count program) (+ relative-base value-at-param))
+        relative-base
+        (nth program (+ relative-base value-at-param)))
+
+      (= 1 mode)
+      value-at-param
+
+      :else
+      (if (<= (count program) value-at-param)
+        0
+        (nth program value-at-param)))))
 
 
-(pointer->1params 0 [104 10])
+(defn parameter->location
+  [{:keys [pointer program relative-base] :as record} offset]
+  (let [mode (get-mode (nth program pointer) offset)
+        value-at-param (nth program (+ pointer offset))]
+    (cond
+      (= 2 mode)
+      (+ relative-base value-at-param)
+
+      (= 0 mode)
+      value-at-param
+
+      :else
+      (throw (Exception. "invalid location parameter mode")))))
 
 
 (defn add-multiply
-  [pointer program f]
-  (let [[first-param
-         second-param
-         third-param] (pointer->3params pointer program true)]
-    [(+ 4 pointer)
-     (assoc
-       program
-       third-param
-       (f first-param
-          second-param))]))
+  [{:keys [pointer program] :as record} f]
+  (let [first-param (parameter->value record 1)
+        second-param (parameter->value record 2)
+        third-param (parameter->location record 3)]
+    (assoc
+      record
+      :pointer (+ 4 pointer)
+      :program (assoc-expand-vec
+                 program
+                 third-param
+                 (f first-param
+                    second-param)))))
 
 
 (defn add
-  [pointer program]
-  (add-multiply pointer program +))
+  [record]
+  (add-multiply record +))
 
 
 (defn multiply
-  [pointer program]
-  (add-multiply pointer program *))
+  [record]
+  (add-multiply record *))
 
 
 (defn input
-  [pointer program in]
-  [(+ 2 pointer)
-   (assoc
-     program
-     (nth program (+ 1 pointer))
-     (<!! in))])
+  [{:keys [pointer program] :as record} in]
+  (let [first-param (parameter->location record 1)]
+    (assoc
+      record
+      :pointer (+ 2 pointer)
+      :program (assoc-expand-vec
+                 program
+                 first-param
+                 (<!! in)))))
 
 
 (defn output
-  [pointer program out]
-  (let [[first-param] (pointer->1params pointer program)]
+  [{:keys [pointer program] :as record} out]
+  (let [first-param (parameter->value record 1)]
     (>!! out first-param)
-    [(+ 2 pointer)
-     program]))
+    (assoc
+      record
+      :pointer (+ 2 pointer))))
 
 
 (defn jump-if-fn
-  [pointer program f]
-  (let [[first-param
-         second-param] (pointer->2params pointer program false)]
+  [{:keys [pointer program] :as record} f]
+  (let [first-param (parameter->value record 1)
+        second-param (parameter->value record 2)]
     (if (f (not= 0 first-param))
-      [second-param program]
-      [(+ 3 pointer) program])))
+      (assoc record :pointer second-param)
+      (assoc record :pointer (+ 3 pointer)))))
 
 
 (defn jump-if-true
-  [pointer program]
-  (jump-if-fn pointer program true?))
+  [record]
+  (jump-if-fn record true?))
 
 
 (defn jump-if-false
-  [pointer program]
-  (jump-if-fn pointer program false?))
+  [record]
+  (jump-if-fn record false?))
 
 
 (defn compare-with-fn
-  [pointer program f]
-  (let [[first-param
-         second-param
-         third-param] (pointer->3params pointer program true)]
-    [(+ 4 pointer)
-     (assoc
-       program
-       third-param
-       (if (f first-param second-param)
-         1
-         0))]))
+  [{:keys [pointer program] :as record} f]
+  (let [first-param (parameter->value record 1)
+        second-param (parameter->value record 2)
+        third-param (parameter->location record 3)]
+    (assoc
+      record
+      :pointer (+ 4 pointer)
+      :program (assoc-expand-vec
+                 program
+                 third-param
+                 (if (f first-param second-param)
+                   1
+                   0)))))
 
 
 (defn less-than
-  [pointer program]
-  (compare-with-fn pointer program <))
+  [record]
+  (compare-with-fn record <))
 
 
 (defn equals
-  [pointer program]
-  (compare-with-fn pointer program =))
+  [record]
+  (compare-with-fn record =))
 
 
-(defn get-opscode
-  [opscode]
-  (as-> opscode n
-        (format "%05d" n)
-        (seq n)
-        (take-last 2 n)
-        (str/join "" n)
-        (str/replace n #"^0+" "")
-        (read-string n)))
+(defn change-relative-base
+  [{:keys [pointer relative-base] :as record}]
+  (let [first-param (parameter->value record 1)]
+    (assoc record
+           :pointer (+ 2 pointer)
+           :relative-base (+ relative-base first-param))))
 
 
 (defn intcode
@@ -152,19 +184,25 @@
    (let [process (chan)
          out (chan)]
     ;; Initalize the processing
-     (go (>! process [0 program]))
+     (go (>!
+           process
+           {:pointer 0
+            :program program
+            :relative-base 0}))
      (go-loop []
-       (let [[pointer program] (<! process)
-             ops-code (get-opscode (nth program pointer))]
+       (let [{:keys [pointer program] :as record} (<! process)
+             ops-code (get-opscode record)]
+         ;(print "\n" record)
          (case ops-code
-           1  (go (>! process (add pointer program)))
-           2  (go (>! process (multiply pointer program)))
-           3  (go (>! process (input pointer program in)))
-           4  (go (>! process (output pointer program out)))
-           5  (go (>! process (jump-if-true pointer program)))
-           6  (go (>! process (jump-if-false pointer program)))
-           7  (go (>! process (less-than pointer program)))
-           8  (go (>! process (equals pointer program)))
+           1  (go (>! process (add record)))
+           2  (go (>! process (multiply record)))
+           3  (go (>! process (input record in)))
+           4  (go (>! process (output record out)))
+           5  (go (>! process (jump-if-true record)))
+           6  (go (>! process (jump-if-false record)))
+           7  (go (>! process (less-than record)))
+           8  (go (>! process (equals record)))
+           9  (go (>! process (change-relative-base record)))
            99 (do
                 (when debug?
                   (>!! out program))
@@ -173,6 +211,10 @@
            (throw (ex-info "Invalid opcode" {:opscode ops-code})))
          (recur)))
      out)))
+
+
+;; very large size
+; into existing (repeat (- loc (count v)) 0)
 
 
 (defn run-intcode
@@ -190,9 +232,13 @@
 
 
 (comment
+
   (run-intcode [1 2 3 2 99])
   (run-intcode [3 0 4 0 99] [11])
   (run-intcode [1 1 1 4 99 5 6 0 99])
   (run-intcode [3 9 8 9 10 9 4 9 99 -1 8] [8])
   (run-intcode [3 21 1008 21 8 20 1005 20 22 107 8 21 20 1006 20 31 1106 0 36 98 0 0 1002 21 125 20 4 20 1105 1 46 104 999 1105 1 46 1101 1000 1 20 4 20 1105 1 46 98 99] [7])
+
+  (run-intcode [109 1 204 -1 1001 100 1 100 1008 100 16 101 1006 101 0 99] [])
+  (run-intcode [104,1125899906842624,99] [])
 )

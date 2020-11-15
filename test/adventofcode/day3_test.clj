@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [adventofcode.day3 :refer :all]))
 
-(deftest closest-intersections
+#_(deftest closest-intersections
   (testing "find closest intersections"
     (let [path1 ["R8" "U5" "L5" "D3"]
           path2 ["U7" "R6" "D4" "L4"]]
@@ -17,7 +17,7 @@
     (is (= (part1) 768))))
 
 
-(deftest least-signal-delays
+#_(deftest least-signal-delays
   (testing "find closest intersections"
     (let [path1 ["R8" "U5" "L5" "D3"]
           path2 ["U7" "R6" "D4" "L4"]]

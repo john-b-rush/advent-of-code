@@ -1,13 +1,17 @@
 (ns adventofcode.utils
-  (:require [clojure.string :as str]))
+  (:require
+    [clojure.string :as str]))
+
 
 (defn- split-string
   [string]
   (str/split string #","))
 
+
 (defn- split-chars
   [string]
   (str/split string #""))
+
 
 (defn- csv->seq
   [string]
@@ -19,13 +23,13 @@
   (slurp filename))
 
 
-
 (defn day1-input
   []
   (->> "input/d1input.txt"
        (read-input)
        (str/split-lines)
        (map read-string)))
+
 
 (defn day2-input
   []
@@ -42,9 +46,11 @@
        (str/split-lines)
        (map split-string)))
 
+
 (defn- split-orbit
   [string]
   (str/split string (re-pattern "\\)")))
+
 
 (defn day5-input
   []
@@ -53,12 +59,14 @@
        (csv->seq)
        (vec)))
 
+
 (defn day6-input
   []
- (->> "input/day6_input.txt"
-      (read-input)
-      (str/split-lines)
-      (map split-orbit)))
+  (->> "input/day6_input.txt"
+       (read-input)
+       (str/split-lines)
+       (map split-orbit)))
+
 
 (defn day7-input
   []
@@ -67,6 +75,7 @@
        (csv->seq)
        (vec)))
 
+
 (defn day8-input
   []
   (->> "input/day8.txt"
@@ -74,6 +83,15 @@
        (str/trim-newline)
        (split-chars)
        (map read-string)))
+
+
+(defn day9-input
+  []
+  (->> "input/day9.txt"
+       (read-input)
+       (csv->seq)
+       (vec)))
+
 
 (defn day14-input
   []

@@ -136,10 +136,6 @@
        (reduce concat)))
 
 
-(sort-next-astroid agls 269)
-(sort-next-astroid agls 0)
-
-
 (defn get-angles
   [locs location angle]
   (->> locs

@@ -99,6 +99,15 @@
        (csv->seq)
        (vec)))
 
+
+(defn day13-input
+  []
+  (->> "input/day13.txt"
+       (read-input)
+       (csv->seq)
+       (vec)))
+
+
 (defn day14-input
   []
   (->> "input/day14.txt"

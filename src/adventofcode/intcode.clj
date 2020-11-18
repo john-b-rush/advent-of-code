@@ -19,7 +19,6 @@
           (str/replace n #"^0+" "")
           (read-string n))
     (catch Exception ex
-      (print "\n--\n" pointer program)
       (throw ex))))
 
 
@@ -207,7 +206,9 @@
                 (when debug?
                   (>!! out program))
                 (close! in)
-                (close! out))
+                (close! out)
+                (print "ded")
+                )
            (throw (ex-info "Invalid opcode" {:opscode ops-code})))
          (recur)))
      out)))

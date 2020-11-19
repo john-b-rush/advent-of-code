@@ -111,5 +111,5 @@
 (defn day14-input
   []
   (->> "input/day14.txt"
-       (slurp)
-       (str/split-lines)))
+       (slurp)))
+       ;(str/split-lines)))

@@ -5,14 +5,12 @@
 
 (defn- pw-char-count?
   [word]
-  (let [[str-range charr pass] (->
-                                 word
-                                 (str/split #" "))
-        [start end]  (str/split str-range #"-")]
+  (let [[str-range charr pass] (str/split word #" ")
+        [start end] (map read-string (str/split str-range #"-"))]
     (<=
-      (Integer/parseInt start)
+      start
       (get (frequencies pass) (first charr) -1)
-      (Integer/parseInt end))))
+      end)))
 
 ;; Part 1
 #_(->> "inputs/day2.txt"
@@ -24,12 +22,10 @@
 
 (defn- pw-char-loc?
   [word]
-  (let [[str-range charr pass] (->
-                                 word
-                                 (str/split #" "))
-        [start end]  (str/split str-range #"-")]
+  (let [[str-range charr pass] (str/split word #" ")
+        [start end] (map read-string (str/split str-range #"-"))]
     (->>
-      [(nth pass (dec (Integer/parseInt start))) (nth pass (dec (Integer/parseInt end)))]
+      [(nth pass (dec start)) (nth pass (dec end))]
       (filter #{(first charr)})
       (count)
       (= 1))))

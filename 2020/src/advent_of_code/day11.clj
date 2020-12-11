@@ -121,7 +121,7 @@
 
 
 ;; Part 2
-(loop [seat-graph (build-seat-map input)
+#_(loop [seat-graph (build-seat-map input)
        iters 0]
   (let [changes  (->> seat-graph
                       (map (partial change-seat-los seat-graph))
@@ -132,3 +132,28 @@
            (filter #{\#})
            (count))
       (recur (reduce merge seat-graph changes) (inc iters)))))
+
+
+(defn update-seats
+  [seat-graph]
+  (reduce
+    merge
+    seat-graph
+    (->> seat-graph
+         (map (partial change-seat-los seat-graph)))))
+
+
+
+;; part 2 more functional!
+#_(->> input
+     (build-seat-map)
+     (iterate update-seats)
+     (partition 2 1)
+     (drop-while (fn [[g1 g2]] (not= g1 g2)))
+     (first)
+     (first)
+     (vals)
+     (filter #{\#})
+     (count))
+
+;; Could have done better by pre-tracing the seats and then it's a lookup rather than tracing everytime

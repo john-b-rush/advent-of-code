@@ -72,7 +72,6 @@
 
 (defn- adv-math
   [idx items]
-  (print "adm" idx items "\n")
   (->>
     items
     (parens idx)
@@ -82,7 +81,6 @@
 
 (defn- parens
   [idx items]
-  (print idx items "\n")
   (loop [new-items []
          idx idx]
     (if (= (count items) idx)
@@ -91,7 +89,6 @@
         (case value
           \(
           (let [[offset [sub-value]] (adv-math (inc idx) items)]
-            (print sub-value offset)
             (recur
               (conj new-items sub-value)
               (inc offset)))
@@ -104,7 +101,6 @@
 
 (defn- adv-math+
   [[idx items]]
-  (print "pls" idx items "\n")
   [idx
    (->>
      items

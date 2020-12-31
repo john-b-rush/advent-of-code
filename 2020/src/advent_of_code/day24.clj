@@ -133,13 +133,21 @@
            (str/join)))))
 
 ;; Part 1
-(->> "inputs/day24.txt"
+#_(->> "inputs/day24.txt"
      (slurp)
      (str/split-lines)
      (map process-tile-inst)
      (group-by identity)
      (filter #(odd? (count (val %))))
      (count))
+
+
+(def surrounding-tiles
+  (memoize
+    (fn [location]
+      (for [y ["se" "sw" "nw" "ne" "w" "e"]
+            :let [d (process-tile-inst (str/join [location y]))]]
+        d))))
 
 
 (defn new-black-tiles
@@ -157,14 +165,6 @@
             :when (= 2 s-tile-count)]
         z)
       (distinct))))
-
-
-(def surrounding-tiles
-  (memoize
-    (fn [location]
-      (for [y ["se" "sw" "nw" "ne" "w" "e"]
-            :let [d (process-tile-inst (str/join [location y]))]]
-        d))))
 
 
 (defn old-black-tiles
@@ -186,7 +186,7 @@
 
 
 ;; Part 2
-(->> "inputs/day24.txt"
+#_(->> "inputs/day24.txt"
      (slurp)
      (str/split-lines)
      ;; Get ini black tiles

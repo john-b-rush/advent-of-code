@@ -1,7 +1,4 @@
-(ns advent-of-code.day25
-  (:require
-    [clojure.math.combinatorics :as combo]
-    [clojure.string :as str]))
+(ns advent-of-code.day25)
 
 ;; Inputs:
 ;; 14222596
@@ -17,9 +14,9 @@
       (rem (* 7 value) 20201227))))
 
 ;; Key = 3286137
-(loop [size 0
+#_(loop [size 0
        value 1]
-  (if (or (= 3616052 size))
+  (if (= 3616052 size)
     value
     (recur 
       (inc size)
